@@ -1,0 +1,181 @@
+-- GUVVY PLATFORM (FAST • SMOOTH • NO GLITCH)
+
+-- SERVICES
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+
+-- SETTINGS
+local platformSize = Vector3.new(1000, 1.6, 1000)
+local platformColor = Color3.fromRGB(80, 170, 255)
+
+local platform
+local enabled = false
+local followConn
+
+-- GUI
+local playerGui = player:WaitForChild("PlayerGui")
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "GuvvyGUI"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 200, 0, 80)
+frame.Position = UDim2.new(0.5, -100, 0.7, 0)
+frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+frame.BorderSizePixel = 0
+frame.Active = true
+frame.Parent = screenGui
+
+-- Rounded GUI
+local frameCorner = Instance.new("UICorner")
+frameCorner.CornerRadius = UDim.new(0, 16)
+frameCorner.Parent = frame
+
+local frameStroke = Instance.new("UIStroke")
+frameStroke.Color = platformColor
+frameStroke.Thickness = 1.5
+frameStroke.Transparency = 0.2
+frameStroke.Parent = frame
+
+-- CREDIT (CHANGED)
+local credit = Instance.new("TextLabel")
+credit.Size = UDim2.new(1, -10, 0, 14)
+credit.Position = UDim2.new(0, 5, 0, 2)
+credit.BackgroundTransparency = 1
+credit.Text = "Tt justinni83"
+credit.TextColor3 = Color3.fromRGB(180, 180, 180)
+credit.Font = Enum.Font.SourceSans
+credit.TextSize = 12
+credit.TextXAlignment = Enum.TextXAlignment.Center
+credit.Parent = frame
+
+-- BUTTON
+local button = Instance.new("TextButton")
+button.Size = UDim2.new(1, -10, 0, 36)
+button.Position = UDim2.new(0, 5, 0, 18)
+button.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+button.TextColor3 = Color3.new(1, 1, 1)
+button.Font = Enum.Font.SourceSansBold
+button.TextSize = 18
+button.Text = "PLATFORM OFF"
+button.Parent = frame
+
+local btnCorner = Instance.new("UICorner")
+btnCorner.CornerRadius = UDim.new(0, 12)
+btnCorner.Parent = button
+
+-- DISCORD (CHANGED)
+local discord = Instance.new("TextLabel")
+discord.Size = UDim2.new(1, -10, 0, 14)
+discord.Position = UDim2.new(0, 5, 0, 58)
+discord.BackgroundTransparency = 1
+discord.Text = "https://discord.gg/79baGU6DB"
+discord.TextColor3 = Color3.fromRGB(150, 150, 150)
+discord.Font = Enum.Font.SourceSans
+discord.TextSize = 12
+discord.TextXAlignment = Enum.TextXAlignment.Center
+discord.Parent = frame
+
+-- DRAG GUI
+local dragging, dragStart, startPos
+
+frame.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1
+	or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = true
+		dragStart = input.Position
+		startPos = frame.Position
+
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				dragging = false
+			end
+		end)
+	end
+end)
+
+frame.InputChanged:Connect(function(input)
+	if dragging and (
+		input.UserInputType == Enum.UserInputType.MouseMovement
+		or input.UserInputType == Enum.UserInputType.Touch
+	) then
+		local delta = input.Position - dragStart
+		frame.Position = UDim2.new(
+			startPos.X.Scale,
+			startPos.X.Offset + delta.X,
+			startPos.Y.Scale,
+			startPos.Y.Offset + delta.Y
+		)
+	end
+end)
+
+-- CREATE PLATFORM (STABLE + WALKABLE)
+local function createPlatform(hrp)
+	if platform then platform:Destroy() end
+	if followConn then followConn:Disconnect() end
+
+	platform = Instance.new("Part")
+	platform.Name = "GuvvyPlatform"
+	platform.Size = platformSize
+	platform.Anchored = true
+	platform.CanCollide = true
+	platform.Massless = true
+	platform.Material = Enum.Material.Neon
+	platform.Transparency = 0.15
+	platform.Color = platformColor
+	platform.Parent = workspace
+
+	-- Glow
+	local light = Instance.new("PointLight")
+	light.Color = platformColor
+	light.Brightness = 2
+	light.Range = 40
+	light.Shadows = false
+	light.Parent = platform
+
+	local humanoid = hrp.Parent:WaitForChild("Humanoid")
+
+	-- Lock Y ONCE (prevents glitching)
+	local LOCK_Y = hrp.Position.Y - humanoid.HipHeight - 1.5
+
+	followConn = RunService.Heartbeat:Connect(function()
+		if not enabled or not hrp.Parent or not platform then
+			if followConn then followConn:Disconnect() end
+			return
+		end
+
+		-- Follow X/Z ONLY
+		platform.Position = Vector3.new(
+			hrp.Position.X,
+			LOCK_Y,
+			hrp.Position.Z
+		)
+	end)
+end
+
+-- TOGGLE
+button.MouseButton1Click:Connect(function()
+	enabled = not enabled
+
+	if enabled then
+		button.Text = "PLATFORM ON"
+		button.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+
+		local char = player.Character
+		if char then
+			createPlatform(char:WaitForChild("HumanoidRootPart"))
+		end
+	else
+		button.Text = "PLATFORM OFF"
+		button.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+
+		if followConn then followConn:Disconnect() end
+		if platform then platform:Destroy() end
+		platform = nil
+	end
+end)
